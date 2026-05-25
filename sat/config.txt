@@ -1,0 +1,10 @@
+ALEXA_VOICE="/home/lorak/venv/lib/python3.13/site-packages/openwakeword/resources/models/alexa_v0.1.onnx"
+COMMAND_FILE="/home/lorak/sat/command.wav"
+
+PATH_ON_HOST_TO_SEND_AUDIO_FILE="/home/lorak/Templates/docker/files/command.wav"
+PATH_ON_WHISPER_TO_AUDIO="/files/command.wav"
+HOST_IP=192.168.0.102
+HOST_USERNAME=lorak
+HOST_PASSWORD=Kolega123
+MQTT_PORT=1883
+MQTT_TOPIC="hermes/nlu/query"
