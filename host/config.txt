@@ -1,0 +1,8 @@
+DEF_MODEL=gemma3:4b
+MQTT_IP=localhost
+MQTT_PORT=1883
+RESP_FILE="/home/lorak/Templates/host/synth_response.wav"
+SAT_PATH="/home/lorak/sat/response.wav"
+SAT_IP=192.168.0.130
+SAT_USR=lorak
+SAT_PASS=Kolega123

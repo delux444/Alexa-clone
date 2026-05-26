@@ -28,7 +28,7 @@ def main():
         sftp.put(filename, host_path)
         sftp.close()
         ssh.close()
-        print("[*] file send with sucess via SFTP")
+        print("[*] file send to host with sucess via SFTP")
         
     except (SSHException, IOError) as e:
         return f"[!] Error SSH/SFTP: Sending not done: {e}"
