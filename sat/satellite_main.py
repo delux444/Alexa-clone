@@ -8,7 +8,11 @@ import record_command
 import send_command
 import send_text_as_intent
 
+import os
+
 from read_config import get_from_config as config
+
+import re
 
 wake_word_active = threading.Event()
 wake_word_active.set()
@@ -49,13 +53,14 @@ def command_loop(mqttc):
 
         if recorded and record_command_active.is_set():
 
-            print("[*] Start Speech to text with Whispercpp on localhost:8080")
+            print(f"[*] Start Speech to text with Whispercpp on {config(parameter="HOST_IP")}:8080")
 
-            whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
-
+            #whitelist = set('abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+            
             raw_text = send_command.main()
-            text = ''.join(filter(whitelist.__contains__, raw_text))
-
+            #text = ''.join(filter(whitelist.__contains__, raw_text))
+            
+            text = re.sub(r'[^\w\s]', '', raw_text)
             text = text.strip()
 
             if text:
@@ -105,7 +110,8 @@ def on_connect(client, userdata, flags, reason_code, properties):
         "hermes/hotword/toggleOff",
         "hermes/asr/startListening",
         "hermes/asr/stopListening",
-        "hermes/asr/textCaptured"
+        "hermes/asr/textCaptured",
+        "hermes/response/ready"
     ]
     for topic in topics:
         client.subscribe(topic)
@@ -153,6 +159,11 @@ def on_message(client, userdata, msg):
         intent_text = intent
 
         send_text_as_intent_active.set()
+
+    elif msg.topic == "hermes/response/ready":
+        print("[* ] >>>>>>>> STARTING AUDIO <<<<<<<<")
+        os.system("aplay -D plughw:0,0 -c 2 -t wav response.wav")
+        pass
 
     else:
         print("[!] Not recognized")
