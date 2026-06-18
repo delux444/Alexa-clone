@@ -1,0 +1,499 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{amsmath}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{encxvlna}
+\usepackage{float}
+
+\geometry{margin=25mm}
+
+% Konfiguracja wyswietlania kodu zrodlowego
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\title{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Niniejsze sprawozdanie opisuje projekt prototypu rozproszonego asystenta głosowego, który został zrealizowany w ramach przedmiotu \textit{Systemy Mikroprocesorowe i~Wbudowane}. Celem projektu było stworzenie funkcjonalnego rozwiązania typu Proof of Concept (PoC). System emuluje działanie komercyjnych głośników inteligentnych, takich jak Amazon Alexa czy Google Home, ze szczególnym uwzględnieniem integracji z infrastrukturą inteligentnego domu za pośrednictwem protokołu MQTT.
+
+\medbreak
+
+Architektura systemu obejmuje dwa kluczowe węzły:
+\begin{itemize}
+    \item \textbf{Węzeł satelitarny (klient):} Działa na platformie Raspberry Pi Zero 2 W pod kontrolą systemu Raspberry Pi OS. Odpowiada za ciągłe nasłuchiwanie słowa budzącego (wake word), nagrywanie komendy użytkownika oraz odtwarzanie generowanych odpowiedzi.
+    \item \textbf{Węzeł centralny (host):} Uruchomiony na maszynie stacjonarnej o większej mocy obliczeniowej. Zajmuje się zadaniami wymagającymi dużych zasobów: automatycznym rozpoznawaniem mowy (STT), przetwarzaniem języka naturalnego (NLP) za pomocą lokalnego dużego modelu językowego (LLM) oraz syntezą mowy (TTS).
+\end{itemize}
+
+Komunikacja między węzłami opiera się na protokole MQTT i jest zgodna ze specyfikacją standardu Hermes (wykorzystywanego m.in. w ekosystemie Rhasspy).
+
+W fazie prototypu wykorzystano platformę Raspberry Pi Zero 2 W ze względu na jej uniwersalność i łatwy dostęp do bibliotek. Docelowo planowana jest jednak migracja modułu satelitarnego na mikrokontroler \textbf{Seeed XIAO ESP32-S3}. Układ ten charakteryzuje się znacznie mniejszymi wymiarami oraz sprzętową integracją interfejsów Wi-Fi i Bluetooth, co umożliwi pełną miniaturyzację urządzenia.
+
+Opracowane rozwiązanie wykazuje wysoki potencjał wdrożeniowy w obszarze technologii asystencyjnych i opiekuńczych. Intuicyjny interfejs głosowy może stanowić kluczowe ułatwienie w codziennym funkcjonowaniu osób starszych lub o ograniczonej mobilności. W przyszłości planowane jest rozszerzenie funkcjonalności o~integrację z narzędziem OpenClaw, co pozwoli asystentowi na autonomiczne przeszukiwanie zasobów sieciowych w czasie rzeczywistym oraz automatyzację zarządzania codziennymi zadaniami (np. organizacja kalendarza, generowanie i wysyłanie wiadomości e-mail).
+\end{abstract}
+
+\newpage
+
+\section{Wstęp i cel projektu}
+Dynamiczny rozwój koncepcji Internetu Rzeczy (IoT) oraz rosnąca wydajność i dostępność kompaktowych platform obliczeniowych umożliwiają implementację zaawansowanych systemów wbudowanych, realizujących funkcje zastrzeżone dotychczas dla zamkniętych rozwiązań komercyjnych. Głosowe interfejsy użytkownika (VUI) stanowią dziś jeden z~fundamentalnych komponentów nowoczesnych ekosystemów Smart Home, oferując naturalną i~bezdotykową kontrolę nad urządzeniami domowymi.
+
+Głównym celem tego projektu było zaprojektowanie oraz implementacja autorskiego, lokalnego asystenta głosowego dedykowanego do obsługi \textbf{języka Polskiego}. Kluczowym założeniem projektowym było oparcie architektury wyłącznie na oprogramowaniu open-source oraz lokalnie uruchamianych modelach sztucznej inteligencji. Pozwoliło to na pełną niezależność od zewnętrznych dostawców usług chmurowych, gwarantując maksymalną prywatność i bezpieczeństwo przetwarzanych danych użytkownika.
+
+Projektowany system realizuje kompletny, sekwencyjny potok przetwarzania danych (pipeline), obejmujący następujące etapy:
+\begin{enumerate}
+    \item Lokalna detekcja słowa budzącego (\textit{Wake Word Detection}),
+    \item Rejestracja i buforowanie polecenia audio,
+    \item Zamiana mowy na tekst (\textit{Speech-to-Text} – STT),
+    \item Analiza kontekstu i wygenerowanie odpowiedzi przez lokalny model LLM,
+    \item Zamiana tekstu na mowę (\textit{Text-to-Speech} – TTS),
+    \item Transmisja zwrotna i odtworzenie syntezowanego komunikatu audio.
+\end{enumerate}
+
+\section{Schemat, PCB i wizualizacja 3D satelity}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{schemat.png}
+    \caption{Schemat satelity}
+    \label{fig:schemat}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{pcb.png}
+    \caption{Projekt płytki PCB satelity}
+    \label{fig:pcb}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{3d1.png}
+    \caption{Wizualizacja 3D PCB satelity - rzut pierwszy}
+    \label{fig:3d_widok1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{3d2.png}
+    \caption{Wizualizacja 3D PCB satelity - rzut drugi}
+    \label{fig:3d_widok2}
+\end{figure}
+
+\section{Fizyczny prototyp satelity}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{front.jpeg}
+    \caption{Satelita na płytce prototypowej - tył}
+    \label{fig:moje-zdjecie}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{back.jpeg}
+    \caption{Satelita na płytce prototypowej - front}
+    \label{fig:moje-zdjecie}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{both.jpeg}
+    \caption{Rozdzielony moduł satelity oraz RP Zero 2 W }
+    \label{fig:moje-zdjecie}
+\end{figure}
+
+\section{Architektura systemu}
+
+\subsection{Przegląd ogólny}
+Projektowany system charakteryzuje się architekturą rozproszoną, złożoną z dwóch logicznych węzłów komunikujących się za pośrednictwem centralnego brokera wiadomości. Asymetryczny podział zadań pozwala na optymalne zarządzanie zasobami sprzętowymi: energochłonne oraz wymagające dużej mocy obliczeniowej procesy (takie jak obsługa dużego modelu językowego LLM, systemu rozpoznawania mowy Whisper oraz syntezatora TTS) są w pełni oddelegowane do wydajnego węzła centralnego (Hosta). Dzięki temu satelita realizuje wyłącznie lekkie zadania, związane z obsługą wejścia-wyjścia audio oraz detekcją frazy kluczowej.
+
+\subsection{Protokół komunikacji MQTT / Hermes}
+Wymiana danych pomiędzy poszczególnymi komponentami systemu opiera się na protokole MQTT (\textit{Message Queuing Telemetry Transport}) – lekkim i efektywnym standardzie przesyłania wiadomości opartym na modelu subskrypcji (\textit{publish-subscribe}), powszechnie stosowanym w ekosystemach Internetu Rzeczy (IoT).
+
+W celu zapewnienia modułowości i standaryzacji danych, struktura tematów (topików) MQTT została oparta na specyfikacji \textbf{Hermes Protocol}, wykorzystywanej m.in. przez otwartoźródłową platformę asystencką Rhasspy. Implementacja tego standardu umożliwia łatwą migrację lub integrację poszczególnych modułów z innymi systemami zgodnymi z~tą konwencją w przyszłości.
+
+Do realizacji potoku przetwarzania danych w systemie wykorzystywane są następujące, kluczowe topiki MQTT:
+\begin{itemize}
+    \item \texttt{hermes/hotword/default/detected} \\
+    \textit{Nadawca:} Satelita | \textit{Odbiorca:} Host \\
+    Opublikowany automatycznie w momencie lokalnego wykrycia i zweryfikowania słowa budzącego przez moduł \texttt{openwakeword}.
+    
+    \item \texttt{hermes/asr/startListening} / \texttt{hermes/asr/stopListening} \\
+    \textit{Nadawca:} Host/Satelita | \textit{Odbiorca:} Moduł nagrywający \\
+    Służą do precyzyjnego sterowania oknem czasowym rejestracji polecenia głosowego użytkownika.
+    
+    \item \texttt{hermes/asr/textCaptured} \\
+    \textit{Nadawca:} Host (Whisper.cpp) | \textit{Odbiorca:} Moduł zarządzający \\
+    Zawiera zdekodowany tekst (wynik transkrypcji mowy na tekst), gotowy do przekazania do warstwy przetwarzania języka naturalnego.
+    
+    \item \texttt{hermes/nlu/query} \\
+    \textit{Nadawca:} Moduł zarządzający | \textit{Odbiorca:} Host (Ollama) \\
+    Przekazuje przetworzone zapytanie tekstowe bezpośrednio do lokalnego modelu LLM w celu wygenerowania odpowiedzi.
+    
+    \item \texttt{hermes/nlu/intentNotRecognized} lub \texttt{hermes/tts/say} \\
+    \textit{Nadawca:} Host (Ollama) | \textit{Odbiorca:} Host (Piper TTS) \\
+    Przenosi finalną odpowiedź tekstową wygenerowaną przez model językowy, stanowiąc sygnał wejściowy dla syntezatora mowy.
+    
+    \item \texttt{hermes/audioServer/satellite/playBytes} \\
+    \textit{Nadawca:} Host | \textit{Odbiorca:} Satelita \\
+    Służy do binarnego przesyłania surowego strumienia audio (w formacie WAV), generowanego przez syntezator TTS, bezpośrednio do podsystemu nagłośnienia satelity w celu jego odtworzenia.
+\end{itemize}
+
+\section{Opis modułów urządzenia satelitarnego}
+
+\subsection{Główna pętla zdarzeń – \texttt{satellite\_main.py}}
+Plik \texttt{satellite\_main.py} pełni funkcję centralnego modułu zarządzającego (orkiestratora) oprogramowania satelity. W celu zapewnienia optymalnej responsywności systemu, zaimplementowano w nim architekturę wielowątkową. Synchronizacja trzech niezależnych, równolegle uruchomionych procesów realizowana jest za pomocą obiektów \texttt{threading.Event}, działających jako binarne flagi stanu:
+\begin{itemize}
+    \item \texttt{wake\_word\_loop} – wątek odpowiedzialny za ciągłe monitorowanie sygnału z mikrofonu w celu wykrycia frazy aktywacyjnej. Jest on tymczasowo blokowany na czas rejestracji polecenia użytkownika.
+    \item \texttt{command\_loop} – wątek aktywowany asynchronicznie po detekcji słowa budzącego, odpowiedzialny za rejestrację właściwego polecenia głosowego i jego transmisję do modułu transkrypcji STT.
+    \item \texttt{send\_intent\_loop} – wątek odpowiedzialny za publikację zdekodowanego tekstu w~postaci ustrukturyzowanego komunikatu MQTT do warstwy NLU/LLM na hoście.
+\end{itemize}
+
+Mechanizm bezpiecznej i bezkonfliktowej synchronizacji wątków ilustruje poniższy fragment kodu:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+import threading
+
+# Inicjalizacja flag synchronicznych
+wake_word_active = threading.Event()
+record_command_active = threading.Event()
+
+# Stan poczatkowy: aktywna wylacznie detekcja frazy kluczowej
+wake_word_active.set()
+record_command_active.clear()
+
+# Procedura obslugi zdarzenia po wykryciu slowa budzacego
+wake_word_active.clear()    # Wstrzymaniedetekcji Wake Word
+record_command_active.set() # Rejestracja polecenia
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Wywołanie metody \texttt{.set()} odblokowuje wątki oczędujące na dane zdarzenie (metoda \texttt{.wait()}), natomiast \texttt{.clear()} przywraca stan blokady. Taka implementacja skutecznie eliminuje hazardy systemowe, uniemożliwiając jednoczesny zapis do strumienia audio przez moduł detekcji słowa budzącego i moduł rejestracji poleceń.
+
+\subsection{Detekcja słowa budzącego – \texttt{wake\_word.py}}
+Zadaniem tego modułu jest ciągła analiza strumienia wejściowego audio z mikrofonu w poszukiwaniu frazy aktywacyjnej 'Alexa'. Implementacja bazuje na bibliotece \texttt{openwakeword}, wykorzystującej zoptymalizowane modele głębokie w formacie ONNX.
+
+\medbreak
+
+W celu zapewnienia natywnej kompatybilności z modelem, strumień audio skonfigurowano według następujących parametrów:
+\begin{itemize}
+    \item Częstotliwość próbkowania (\texttt{RATE}): 16000 Hz
+    \item Rozmiar ramki (\texttt{CHUNK}): 1280 próbek (Interwał czasowy $\sim$80 ms)
+    \item Format danych (\texttt{FORMAT}): \texttt{paInt16} (16-bitowy strumień PCM)
+    \item Liczba kanałów (\texttt{CHANNELS}): 1 (mono)
+\end{itemize}
+
+Kluczowy fragment pętli detekcyjnej przedstawia się następująco:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+import numpy as np
+
+# Odczyt surowych danych z bufora karty dzwiekowej
+audio_data = stream.read(CHUNK, exception_on_overflow=False)
+audio_array = np.frombuffer(audio_data, dtype=np.int16)
+
+# Inferencja modelu openwakeword
+prediction = model.predict(audio_array)
+score = prediction['alexa_v0.1']
+
+if score > 0.9:
+    return True
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Zastosowanie rygorystycznego progu klasyfikacji (\texttt{score > 0.9}) pozwoliło zminimalizować współczynnik fałszywych aktywacji (\textit{False Positives}) w środowisku o podwyższonym poziomie szumu tła. Przed przekazaniem danych do klasyfikatora, bufor audio konwertowany jest do zoptymalizowanej tablicy NumPy o typie danych \texttt{np.int16}.
+
+\subsection{Nagrywanie polecenia z detekcją ciszy – \texttt{record\_command.py}}
+Po odebraniu sygnału wyzwolenia z modułu \texttt{wake\_word.py}, system przechodzi w stan rejestracji komendy użytkownika. Moduł \texttt{record\_command.py} realizuje algorytm dynamicznego wykrywania końca wypowiedzi na podstawie analizy aktywności głosowej za~pomocą silnika VAD (\textit{Voice Activity Detection}).
+
+Do filtracji sygnału wykorzystano bibliotekę \texttt{webrtcvad}:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+import webrtcvad
+
+vad = webrtcvad.Vad()
+vad.set_mode(3)  # Tryb 3: najbardziej agresywna filtracja szumow i ciszy
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Wybór najwyższego stopnia agresywności (tryb 3) sprawia, że algorytm traktuje nawet krótkie, bezgłośne przerwy w artykulacji jako ciszę. Zdefiniowanie parametru granicznego \texttt{MAX\_SILENCE\_FRAMES = 50} oznacza, że nagrywanie zostaje automatycznie przerwane po~upływie 1,5 sekundy nieprzerwanej ciszy ($50 \times 30\text{ ms} = 1500\text{ ms}$).
+
+\medbreak
+
+Algorytm przetwarzania ramki audio przebiega w następujących krokach:
+\begin{enumerate}
+    \item Cykliczny odczyt pakietów audio o rozmiarze \texttt{CHUNK = 480} próbek (ramka 30 ms przy próbkowaniu 16 kHz).
+    \item Ewaluacja obecności sygnału mowy w ramce za pomocą metody \texttt{vad.is\_speech()}.
+    \item Jeśli zostanie wykryta aktywność głosowa, a stan nagrywania był nieaktywny – następuje inicjalizacja bufora wyjściowego.
+    \item W przypadku braku detekcji mowy, inkrementowany jest licznik ramek ciszy.
+    \item Po przekroczeniu wartości \texttt{MAX\_SILENCE\_FRAMES} proces rejestracji kończy się.
+    \item Skumulowane w pamięci RAM ramki audio są serializowane i zapisywane na dysku jako plik \texttt{command.wav}.
+\end{enumerate}
+
+\subsection{Transmisja danych audio do modułu STT – \texttt{send\_command.py}}
+Wygenerowany plik \texttt{command.wav} przesyłany jest asynchronicznie za pomocą protokołu HTTP (metoda POST) do instancji serwera Whisper.cpp uruchomionego na maszynie centralnej. Whisper.cpp stanowi wysoce zoptymalizowaną (napisaną w C/C++) implementację modelu automatycznego rozpoznawania mowy (OpenAI Whisper), udostępniającą lokalny interfejs REST API.
+
+\smallbreak
+
+Konstrukcja żądania i parametry inferencji zdefiniowane zostały w następujący sposób:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+import requests
+
+payload = {
+    'temperature': '0.0',  # deterministyczne greedy search
+    'language': 'pl',      # Jawne wskazanie jezyka polskiego 
+    'response_format': 'json'
+}
+
+files = {
+    'file': ('command.wav', open('command.wav', 'rb'), 'audio/wav')
+}
+
+response = requests.post(
+    f'http://{host_ip}:8080/inference',
+    files=files, 
+    data=payload
+)
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Wymuszenie parametru \texttt{temperature = 0.0} eliminuje losowość (wariancję) podczas próbkowania tokenów, co gwarantuje powtarzalność transkrypcji dla tych samych próbek dźwiękowych.
+
+\section{Opis modułów jednostki centralnej (Hosta)}
+
+\subsection{Główna pętla hosta – \texttt{host\_run.py}}
+Skrypt \texttt{host\_run.py} stanowi główny punkt wejścia oprogramowania uruchomionego na~hoście. Odpowiada za subskrypcję i obsługę topiku \texttt{hermes/nlu/intentNotRecognized}. Wybór tego tematu wynika z założeń projektowych: zapytania, które nie pasują do żadnych sztywno zdefiniowanych reguł intencji, są traktowane jako zapytania ogólne i przekazywane do obsługi przez lokalny duży model językowy.
+
+Architektura potoku przetwarzania zdarzeń została zrealizowana w sposób asynchroniczny z wykorzystaniem biblioteki \texttt{asyncio}. Sekwencja obsługi przychodzącego komunikatu MQTT przebiega według następującego schematu:
+\begin{enumerate}
+    \item Dekodowanie ładunku (payload) JSON i wyodrębnienie pola \texttt{input}, zawierającego tekstową postać polecenia użytkownika.
+    \item Asynchroniczne przekazanie zapytania do lokalnego modelu LLM za pomocą metody \texttt{llmrequest.chat()}.
+    \item Przekierowanie wygenerowanej odpowiedzi tekstowej do modułu syntezy mowy \texttt{tts.synthesize()}.
+    \item Publikacja wynikowego pliku binarnego WAV na odpowiednim topiku komunikacyjnym satelity poprzez procedurę \texttt{respond.send()}.
+\end{enumerate}
+
+Zastosowanie programowania asynchronicznego (\texttt{asyncio}) pozwala na równoległe wykonywanie nieblokujących operacji, takich jak wyświetlanie animowanego wskaźnika stanu oczekiwania (\texttt{display\_waiting}), przy jednoczesnym zachowaniu pełnej reaktywności pętli zdarzeń MQTT. Kluczowe wywołania bibliotek zewnętrznych (interfejsy serwera Ollama oraz Piper TTS) zostały spakowane w natywne korutyny (\texttt{async def}).
+
+\subsection{Komunikacja z modelem LLM – \texttt{llmrequest.py}}
+Moduł \texttt{llmrequest.py} implementuje warstwę komunikacyjną z lokalnym API serwera Ollama. Narzędzie to umożliwia w pełni suwerenną i odizolowaną od sieci zewnętrznej inferencję wielkich modeli językowych.
+
+W projekcie wykorzystano model \textbf{Bielik-11B-v2.3-Instruct} (stworzony przez polski zespół SpeakLeash) w wersji skwantowanej do formatu \textbf{Q4\_K\_M}. Wybór tego modelu podyktowany był jego wysoką optymalizacją pod kątem gramatyki i semantyki języka polskiego. Zastosowanie kwantyzacji 4-bitowej pozwoliło na redukcję zapotrzebowania na pamięć VRAM/RAM z początkowych $\sim$22 GB do około 7 GB przy marginalnym spadku precyzji odpowiedzi, co umożliwiło stabilne uruchomienie systemu na maszynie wyposażonej w 16 GB pamięci operacyjnej.
+
+Za wysłanie zapytania odpowiada poniższy fragment kodu:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+from ollama import AsyncClient
+
+messages = [
+    {'role': 'system', 'content': sysmsg},
+    {'role': 'user', 'content': usrmsg}
+]
+
+response = await AsyncClient().chat(
+    model=model, 
+    messages=messages, 
+    options={'num_predict': 128}  # Ograniczenie dlugosci odpowiedzi
+)
+return response['message']['content']
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+W konfiguracji pominięto zaawansowane tryby wieloetapowego rozumowania (\textit{chain-of-thought}), ponieważ w systemach asystenckich priorytetem jest minimalizacja czasu reakcji (opóźnienia \textit{Time-to-First-Token}), a nie rozbudowane wnioskowanie logiczne. Odpowiednio skonstruowany komunikat systemowy (\texttt{sysmsg}) wymusza na modelu generowanie odpowiedzi zwięzłych, sformułowanych w pierwszej osobie liczby pojedynczej, oraz całkowite pomijanie znaków interpunkcyjnych czy formatowania Markdown, co stanowi warunek konieczny dla poprawnego działania syntezatora mowy.
+
+\subsection{Synteza mowy – \texttt{tts.py}}
+Konwersja tekstu wyjściowego na sygnał mowy realizowana jest lokalnie przez moduł Piper TTS – szybki i wydajny syntezator oparty na architekturze neuronowej VITS. W~projekcie wykorzystano oficjalny model głosowy \texttt{pl\_PL-gosia-medium}. Charakteryzuje się on optymalnym kompromisem pomiędzy naturalnością brzmienia syntetyzowanej mowy (prozodią) a niskim kosztem obliczeniowym inferencji.
+
+Konfiguracja procesu syntezy opiera się na następujących parametrach struktury \texttt{SynthesisConfig}:
+\begin{itemize}
+    \item Głośność (\texttt{VOLUME = 1.0}): Pełna skala sygnału, brak programowej normalizacji.
+    \item Tempo mowy (\texttt{LENGTH\_SCALE = 1.0}): Standardowa prędkość artykulacji.
+    \item Wariancja szumu (\texttt{NOISE\_SCALE = 0.667}): Domyślna wartość określająca zmienność fonetyczną i naturalność brzmienia.
+    \item Wariancja długości fonemów (\texttt{NOISE\_W\_SCALE = 0.8}): Parametr kontrolujący rytm oraz intonację wypowiedzi.
+\end{itemize}
+
+Generowanie pliku audio realizowane jest za pomocą następującej sekwencji:
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+import wave
+from piper import PiperVoice, SynthesisConfig
+
+# Zaladowanie modelu z akceleracja sprzetowa CUDA
+voice = PiperVoice.load(voice_path, use_cuda=True)
+syn_config = SynthesisConfig(volume=VOLUME, length_scale=LENGTH_SCALE)
+
+with wave.open(filename, 'wb') as wav_file:
+    voice.synthesize_wav(text, wav_file, syn_config)
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Ustawienie flagi \texttt{use\_cuda=True} przenosi obliczenia tensorowe bezpośrednio na procesor graficzny (GPU) firmy NVIDIA. Pozwala to na osiągnięcie współczynnika RTF (\textit{Real-Time Factor}) znacznie poniżej wartości 1.0, co oznacza, że synteza dźwięku trwa wielokrotnie krócej niż czas jego późniejszego odtwarzania.
+
+\subsection{Transmisja odpowiedzi do satelity – \texttt{respond.py}}
+Po zakończeniu generowania pliku audio, moduł \texttt{respond.py} odpowiada za dostarczenie danych binarnych z powrotem do urządzenia satelitarnego. Transmisja realizowana jest asynchronicznie poprzez odczyt surowych bajtów pliku WAV i ich bezpośrednią publikację na dedykowanym topiku \texttt{hermes/audioServer/satellite/playBytes}.
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+with open(filename, 'rb') as f:
+    audio_bytes = f.read()
+
+# Publikacja strumienia binarnego z flaga oczekiwania
+msg_info = client.publish(topic, payload=audio_bytes, qos=0)
+msg_info.wait_for_publish()
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Wywołanie metody \texttt{wait\_for\_publish()} blokuje wykonanie wątku do momentu, aż~broker MQTT potwierdzi poprawne przyjęcie pakietu danych. W projekcie zdecydowano się na poziom jakości usług QoS 0 (\textit{at most once}), co jest standardem przy przesyłaniu strumieni medialnych w sieciach lokalnych, gdzie priorytetem jest minimalizacja narzutu protokołu nadmiarowego. Po odebraniu komunikatu przez klienta na Raspberry Pi, surowe bajty przekazywane są bezpośrednio do podsystemu ALSA za pomocą systemowego narzędzia \texttt{aplay}, co skutkuje natychmiastową emisją dźwięku przez głośnik satelity.
+
+\newpage
+
+\section{Konfiguracja systemu}
+
+\subsection{Konfiguracja hosta – \texttt{config.ini}}
+Host wykorzystuje standardowy plik INI parsowany przez moduł \texttt{configparser}. Plik rozdzielony jest na sekcje odpowiadające poszczególnym komponentom systemu:
+\begin{itemize}
+    \item \texttt{[LLM.REQUEST]} – model, komunikat systemowy dla LLM
+    \item \texttt{[TTS]} – ścieżka do modelu głosu, parametry syntezy, nazwa pliku wyjściowego
+    \item \texttt{[RESPOND]} – adres IP brokera MQTT, port, topik dla audio
+    \item \texttt{[HOSTRUN]} – adres IP i port brokera MQTT dla odebrania poleceń
+\end{itemize}
+
+\subsection{Konfiguracja satelity – \texttt{config.txt} / \texttt{read\_config.py}}
+Satelita używa własnego, uproszczonego mechanizmu konfiguracji opartego na pliku tekstowym w formacie \texttt{KLUCZ=WARTOSC}. Moduł \texttt{read\_config.py} parsuje ten plik linia po~linii, wyszukując zadany aparat i zwracając wartość po znaku równości.
+
+\begin{center}
+\begin{minipage}{0.85\textwidth}
+\begin{lstlisting}[language=Python]
+def get_from_config(parameter=''):
+    with open('config.txt', 'r') as config_file:
+        for line in config_file:
+            if parameter in line:
+                parts = line.split('=')
+                return parts[1].strip(' \r\n\"')
+\end{lstlisting}
+\end{minipage}
+\end{center}
+
+Metoda \texttt{strip()} usuwa białe znaki, znaki nowej linii oraz cudzysłowy z wartości, co~zapewnia poprawne działanie niezależnie od formatu zapisu w pliku konfiguracyjnym.
+
+\section{Platforma docelowa – Seeed XIAO ESP32-S3}
+Obecny prototyp został zrealizowany na Raspberry Pi Zero 2 W z systemem Raspberry Pi OS, co pozwoliło na szybkie prototypowanie dzięki pełnej dostępności Pythona i bibliotek Linux. Platforma ta jest jednak nadmiarowa dla roli satelity, która wymaga jedynie: nagrywania audio, detekcji słowa budzącego, komunikacji Wi-Fi/MQTT i odtwarzania audio.
+
+\medbreak
+
+Docelowa platforma produkcyjna to moduł Seeed XIAO ESP32-S3, który oferuje istotne przewagi nad Raspberry Pi Zero dla tego zastosowania:
+
+\begin{table}[htbp]
+\centering
+\caption{Porównanie platform sprzętowych dla węzła satelitarnego}
+\label{tab:porownanie}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Cecha} & \textbf{RPi Zero 2 W (Prototyp)} & \textbf{XIAO ESP32-S3 (Cel)} \\
+\midrule
+Wymiary PCB & 65 x 30 mm & 21 x 17.5 mm \\
+Pobór mocy (idle) & $\sim$120 mA @ 5V & $\sim$20 mA @ 3.3V \\
+Język programowania & Python & C++ (Arduino/IDF) \\
+Koszt & $\sim$70 PLN & $\sim$35 PLN \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Migracja na ESP32-S3 będzie wymagała przepisania modułów satelity z Pythona na~C++ z użyciem frameworku ESP-IDF lub Arduino. Główne wyzwania techniczne to: implementacja klienta MQTT (biblioteka \texttt{PubSubClient} lub \texttt{esp-mqtt}), obsługa mikrofonu przez interfejs I2S, uruchomienie lekkiego modelu detekcji słowa budzącego (np. \textit{microWakeWord}) oraz streaming audio PCM po Wi-Fi do hosta.
+
+\section{Wyniki i obserwacje}
+
+\subsection{Zmierzone czasy odpowiedzi (sieć lokalna)}
+Pomiary wykonane dla typowego polecenia (ok. 5-10 słów):
+\begin{itemize}
+    \item \textbf{Detekcja słowa budzącego:} $<$ 200 ms (\texttt{openwakeword} na RPi Zero)
+    \item \textbf{Nagrywanie polecenia (VAD):} 2-4 sekundy (zależne od długości wypowiedzi)
+    \item \textbf{Transkrypcja Whisper.cpp:} 1-3 sekundy (model \texttt{medium.pl} na GPU hosta)
+    \item \textbf{Odpowiedź LLM (Bielik 11B Q4):} 3-8 sekund (zależne od długości odpowiedzi)
+    \item \textbf{Synteza Piper TTS:} $<$ 2 sekundy (z akceleracją CUDA)
+    \item \textbf{Przesył audio MQTT:} $<$ 200 ms
+    \item \textbf{Łączny czas odpowiedzi:} \textbf{7-16 sekund}
+\end{itemize}
+
+\subsection{Zidentyfikowane ograniczenia PoC}
+\begin{itemize}
+    \item Brak obsługi historii konwersacji – każde zapytanie jest niezależne (\textit{stateless}).
+    \item Model Bielik wykazuje tendencję do generowania interpunkcji mimo instrukcji w~ \texttt{sysmsg}.
+    \item Detekcja VAD bywa zbyt czuła na hałas otoczenia (tryb agresywności 3 może przedwcześnie kończyć nagrywanie przy dłuższych pauzach).
+    \item Brak mechanizmu timeoutu w przypadku braku odpowiedzi hosta.
+\end{itemize}
+
+\section{Wnioski}
+Projekt stanowi pomyślnie zrealizowany dowód koncepcji (PoC) lokalnego asystenta głosowego działającego w pełni offline, bez przesyłania danych do chmury. Architektura oparta na MQTT i protokole Hermes okazała się elastyczna i łatwa w rozbudowie – dodanie nowych komponentów sprowadza się do subskrypcji odpowiednich topikow.
+
+Kluczowym wyzwaniem okazało się uzyskanie akceptowalnego czasu odpowiedzi przy użyciu lokalnego modelu LLM klasy 11B parametrów. Wyniki wskazują, że dla zastosowań produkcyjnych warto rozważyć mniejsze, wyspecjalizowane modele (np. 3B-7B) lub~zastosowanie dedykowanego sprzętu wspierającego inferencję (NPU, mocniejsze GPU).
+
+Przejście na platformę Seeed XIAO ESP32-S3 w wersji finalnej pozwoli na znaczną redukcję kosztów, poboru mocy i rozmiarów urządzenia satelitarnego, przy zachowaniu pełnej funkcjonalności systemu. Architektura hosta pozostaje niezmienna – modyfikacje dotyczą wyłącznie warstwy sprzętowej i programowej satelity.
+
+\section{Literatura i źródła}
+\begin{enumerate}
+    \item Rhasspy Voice Assistant - Hermes Protocol: \url{https://rhasspy.readthedocs.io/}
+    \item OpenWakeWord - open-source wake word detection: \url{https://github.com/dscripka/openWakeWord}
+    \item Whisper.cpp - C++ port of OpenAI Whisper: \url{https://github.com/ggerganov/whisper.cpp}
+    \item Ollama - local LLM runner: \url{https://ollama.com}
+    \item SpeakLeash Bielik - polski model LLM: \url{https://huggingface.co/speakleash}
+    \item Piper TTS - neural text-to-speech: \url{https://github.com/rhasspy/piper}
+    \item Eclipse Mosquitto MQTT Broker: \url{https://mosquitto.org}
+    \item Seeed XIAO ESP32-S3 datasheet: \url{https://wiki.seeedstudio.com/xiao_esp32s3_getting_started/}
+    \item WebRTC VAD: \url{https://github.com/wiseman/py-webrtcvad}
+    \item Eclipse Paho MQTT Python: \url{https://github.com/eclipse/paho.mqtt.python}
+\end{enumerate}
+
+\end{document}
